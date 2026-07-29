@@ -1,14 +1,4 @@
 services:
-  mongodb:
-    image: mongo:7
-    container_name: scenesolver-mongodb
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - scenesolver-net
 
   backend:
     build:
@@ -20,7 +10,7 @@ services:
       - "8000:8000"
     environment:
       # Override only the values that differ inside Docker
-      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_URL=${MONGODB_URL} # Atlas URL — sourced from backend/.env
       - DATABASE_NAME=scenesolver
       - STORAGE_PATH=/app/storage
       - ALLOWED_ORIGINS=http://localhost,http://localhost:80
@@ -41,12 +31,10 @@ services:
     volumes:
       - backend_storage:/app/storage
       - backend_models:/app/models
-    depends_on:
-      - mongodb
     networks:
       - scenesolver-net
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -67,7 +55,6 @@ services:
       - scenesolver-net
 
 volumes:
-  mongodb_data:
   backend_storage:
   backend_models:
 

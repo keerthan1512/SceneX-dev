@@ -4,7 +4,8 @@ import react from '@vitejs/plugin-react'
 /**
  * Returns true if the request looks like a browser page navigation
  * (i.e. the browser is asking for HTML, not an API call from axios/fetch).
- * We let these fall through to historyApiFallback → index.html.
+ * In Vite's proxy bypass(), returning '/index.html' serves the SPA shell
+ * so React Router can handle the route on the client side.
  */
 function isBrowserNavigation(req) {
   const accept = req.headers['accept'] || ''
@@ -28,17 +29,14 @@ export default defineConfig({
   server: {
     port: 5173,
 
-    // Serve index.html for any path that doesn't match a real file —
-    // this is what makes React Router work on hard refresh / direct URL entry.
-    historyApiFallback: true,
-
     proxy: {
       // ── /classify — instant classification endpoint ─────────────────────────
       '/classify': {
         target: 'http://localhost:8000',
         changeOrigin: true,
         bypass(req) {
-          if (isBrowserNavigation(req)) return req.url
+          // Browser hard-refresh of /classify → serve index.html so React Router handles it
+          if (isBrowserNavigation(req)) return '/index.html'
         },
       },
 
@@ -56,7 +54,8 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
         bypass(req) {
-          if (isBrowserNavigation(req)) return req.url  // serve index.html
+          // Browser hard-refresh of /cases or /cases/:id → serve index.html
+          if (isBrowserNavigation(req)) return '/index.html'
         },
       },
 
@@ -66,7 +65,8 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
         bypass(req) {
-          if (isBrowserNavigation(req)) return req.url  // serve index.html
+          // Browser hard-refresh of /admin/* → serve index.html
+          if (isBrowserNavigation(req)) return '/index.html'
         },
       },
 
@@ -76,9 +76,11 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
         bypass(req) {
-          // Only proxy /dashboard/stats — let /dashboard fall through to React Router
-          if (isBrowserNavigation(req)) return req.url
-          if (!req.url.startsWith('/dashboard/stats')) return req.url
+          // Browser hard-refresh of /dashboard → serve index.html
+          if (isBrowserNavigation(req)) return '/index.html'
+          // Non-stats API calls that hit /dashboard also go to React Router
+          if (!req.url.startsWith('/dashboard/stats')) return '/index.html'
+          // /dashboard/stats API calls fall through to be proxied to the backend
         },
       },
 
